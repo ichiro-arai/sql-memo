@@ -51,7 +51,8 @@ for t in range(30):
     devices[i].log(con)
 
 # check
-def dump(statement):
+def dump(title, statement):
+    print('### ' + title)
     print('```sql')
     print(statement)
     print('```')
@@ -64,6 +65,7 @@ def dump(statement):
         cursor.execute(statement)
         result = '\n'.join(map(lambda x: str(x), cursor.fetchall()))
         cursor.close()
+    print('#### result:')
     print('\n```')
     print(result)
     print('```\n')
@@ -90,26 +92,26 @@ SELECT
 """.strip()
 
 # check base data
-dump('SELECT * FROM logs')
+dump('check base data', 'SELECT * FROM logs')
 
 # check with previous state
-dump(extract_state_change)
+dump('check with previous state', extract_state_change)
 
 # check if radical change
 sql = extract_state_change + """
    AND prev_state = state
    AND (diff > 100 OR diff < -100)
 """
-dump(sql)
+dump('check if radical change', sql)
 
 # select only state change
 sql = extract_state_change + """
    AND t1.device_state <> t2.device_state
 """
-dump(sql)
+dump('select only state change', sql)
 
 
 # filter if there may be logging failure in long time
-dump(sql + "   AND interval < 60 * 60 * 24 * 3")
+dump('filter if there may be logging failure in long time', sql + "   AND interval < 60 * 60 * 24 * 3")
 
 con.close()
