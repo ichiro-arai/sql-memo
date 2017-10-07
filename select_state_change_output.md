@@ -57,9 +57,7 @@ SELECT
     t1.metrics AS value,
     t2.metrics AS prev_value,
     t1.ts AS ts,
-    t2.ts AS prev_ts,
-    t1.metrics - t2.metrics AS diff,
-    CAST(strftime('%s', t1.ts) as integer) - CAST(strftime('%s', t2.ts) as integer) AS interval
+    t2.ts AS prev_ts
   FROM logs AS t1, logs AS t2
  WHERE t1.device_id = t2.device_id
    AND t2.ts = (
@@ -71,16 +69,16 @@ SELECT
 #### result:
 
 ```
-   device_id debug state prev_state  value  prev_value          ts     prev_ts   diff  interval
-0        B-3   B-3  idle       idle  991.0        41.0  2000-01-04  2000-01-02  950.0    172800
-1        B-3   B-3  idle       idle  597.0       991.0  2000-01-05  2000-01-04 -394.0     86400
-2        L#2   L#2  busy       neko  773.0       497.0  2000-01-07  2000-01-03  276.0    345600
-..       ...   ...   ...        ...    ...         ...         ...         ...    ...       ...
-13       p_0   p_0  neko       busy  505.0       736.0  2000-01-19  2000-01-17 -231.0    172800
-14       L#2   L#2  busy       idle  747.0       323.0  2000-01-20  2000-01-13  424.0    604800
-15       L#2   L#2  neko       busy  891.0       747.0  2000-01-21  2000-01-20  144.0     86400
+   device_id debug state prev_state  value  prev_value          ts     prev_ts
+0        B-3   B-3  idle       idle  991.0        41.0  2000-01-04  2000-01-02
+1        B-3   B-3  idle       idle  597.0       991.0  2000-01-05  2000-01-04
+2        L#2   L#2  busy       neko  773.0       497.0  2000-01-07  2000-01-03
+..       ...   ...   ...        ...    ...         ...         ...         ...
+13       p_0   p_0  neko       busy  505.0       736.0  2000-01-19  2000-01-17
+14       L#2   L#2  busy       idle  747.0       323.0  2000-01-20  2000-01-13
+15       L#2   L#2  neko       busy  891.0       747.0  2000-01-21  2000-01-20
 
-[16 rows x 10 columns]
+[16 rows x 8 columns]
 ```
 
 ### check if radical change
@@ -93,9 +91,7 @@ SELECT
     t1.metrics AS value,
     t2.metrics AS prev_value,
     t1.ts AS ts,
-    t2.ts AS prev_ts,
-    t1.metrics - t2.metrics AS diff,
-    CAST(strftime('%s', t1.ts) as integer) - CAST(strftime('%s', t2.ts) as integer) AS interval
+    t2.ts AS prev_ts
   FROM logs AS t1, logs AS t2
  WHERE t1.device_id = t2.device_id
    AND t2.ts = (
@@ -104,19 +100,17 @@ SELECT
        AND t3.device_id = t1.device_id
    )
    AND prev_state = state
-   AND (diff > 100 OR diff < -100)
+   AND t1.metrics - t2.metrics > 100
 
 ```
 #### result:
 
 ```
-  device_id debug state prev_state  value  prev_value          ts     prev_ts   diff  interval
-0       B-3   B-3  idle       idle  991.0        41.0  2000-01-04  2000-01-02  950.0    172800
-1       B-3   B-3  idle       idle  597.0       991.0  2000-01-05  2000-01-04 -394.0     86400
-2       p_0   p_0  neko       neko  338.0       818.0  2000-01-11  2000-01-08 -480.0    259200
-3       B-3   B-3  neko       neko  266.0       103.0  2000-01-15  2000-01-12  163.0    259200
-4       p_0   p_0  neko       neko  937.0       338.0  2000-01-16  2000-01-11  599.0    432000
-5       B-3   B-3  neko       neko  844.0       266.0  2000-01-18  2000-01-15  578.0    259200
+  device_id debug state prev_state  value  prev_value          ts     prev_ts
+0       B-3   B-3  idle       idle  991.0        41.0  2000-01-04  2000-01-02
+1       B-3   B-3  neko       neko  266.0       103.0  2000-01-15  2000-01-12
+2       p_0   p_0  neko       neko  937.0       338.0  2000-01-16  2000-01-11
+3       B-3   B-3  neko       neko  844.0       266.0  2000-01-18  2000-01-15
 ```
 
 ### select only state change
@@ -129,9 +123,7 @@ SELECT
     t1.metrics AS value,
     t2.metrics AS prev_value,
     t1.ts AS ts,
-    t2.ts AS prev_ts,
-    t1.metrics - t2.metrics AS diff,
-    CAST(strftime('%s', t1.ts) as integer) - CAST(strftime('%s', t2.ts) as integer) AS interval
+    t2.ts AS prev_ts
   FROM logs AS t1, logs AS t2
  WHERE t1.device_id = t2.device_id
    AND t2.ts = (
@@ -140,21 +132,20 @@ SELECT
        AND t3.device_id = t1.device_id
    )
    AND t1.device_state <> t2.device_state
-
 ```
 #### result:
 
 ```
-   device_id debug state prev_state  value  prev_value          ts     prev_ts   diff  interval
-0        L#2   L#2  busy       neko  773.0       497.0  2000-01-07  2000-01-03  276.0    345600
-1        L#2   L#2  neko       busy  722.0       773.0  2000-01-09  2000-01-07  -51.0    172800
-2        T^1   T^1  idle       neko  101.0       142.0  2000-01-10  2000-01-06  -41.0    345600
-..       ...   ...   ...        ...    ...         ...         ...         ...    ...       ...
-7        p_0   p_0  neko       busy  505.0       736.0  2000-01-19  2000-01-17 -231.0    172800
-8        L#2   L#2  busy       idle  747.0       323.0  2000-01-20  2000-01-13  424.0    604800
-9        L#2   L#2  neko       busy  891.0       747.0  2000-01-21  2000-01-20  144.0     86400
+   device_id debug state prev_state  value  prev_value          ts     prev_ts
+0        L#2   L#2  busy       neko  773.0       497.0  2000-01-07  2000-01-03
+1        L#2   L#2  neko       busy  722.0       773.0  2000-01-09  2000-01-07
+2        T^1   T^1  idle       neko  101.0       142.0  2000-01-10  2000-01-06
+..       ...   ...   ...        ...    ...         ...         ...         ...
+7        p_0   p_0  neko       busy  505.0       736.0  2000-01-19  2000-01-17
+8        L#2   L#2  busy       idle  747.0       323.0  2000-01-20  2000-01-13
+9        L#2   L#2  neko       busy  891.0       747.0  2000-01-21  2000-01-20
 
-[10 rows x 10 columns]
+[10 rows x 8 columns]
 ```
 
 ### filter if there may be logging failure in long time
@@ -167,9 +158,7 @@ SELECT
     t1.metrics AS value,
     t2.metrics AS prev_value,
     t1.ts AS ts,
-    t2.ts AS prev_ts,
-    t1.metrics - t2.metrics AS diff,
-    CAST(strftime('%s', t1.ts) as integer) - CAST(strftime('%s', t2.ts) as integer) AS interval
+    t2.ts AS prev_ts
   FROM logs AS t1, logs AS t2
  WHERE t1.device_id = t2.device_id
    AND t2.ts = (
@@ -178,15 +167,16 @@ SELECT
        AND t3.device_id = t1.device_id
    )
    AND t1.device_state <> t2.device_state
-   AND interval < 60 * 60 * 24 * 3
+   AND CAST(strftime('%s', t1.ts) as INT) - CAST(strftime('%s', t2.ts) as INT) < 60 * 60 * 24 * 3
+
 ```
 #### result:
 
 ```
-  device_id debug state prev_state  value  prev_value          ts     prev_ts   diff  interval
-0       L#2   L#2  neko       busy  722.0       773.0  2000-01-09  2000-01-07  -51.0    172800
-1       p_0   p_0  busy       neko  736.0       937.0  2000-01-17  2000-01-16 -201.0     86400
-2       p_0   p_0  neko       busy  505.0       736.0  2000-01-19  2000-01-17 -231.0    172800
-3       L#2   L#2  neko       busy  891.0       747.0  2000-01-21  2000-01-20  144.0     86400
+  device_id debug state prev_state  value  prev_value          ts     prev_ts
+0       L#2   L#2  neko       busy  722.0       773.0  2000-01-09  2000-01-07
+1       p_0   p_0  busy       neko  736.0       937.0  2000-01-17  2000-01-16
+2       p_0   p_0  neko       busy  505.0       736.0  2000-01-19  2000-01-17
+3       L#2   L#2  neko       busy  891.0       747.0  2000-01-21  2000-01-20
 ```
 

@@ -83,9 +83,7 @@ SELECT
     t1.metrics AS value,
     t2.metrics AS prev_value,
     t1.ts AS ts,
-    t2.ts AS prev_ts,
-    t1.metrics - t2.metrics AS diff,
-    CAST(strftime('%s', t1.ts) as integer) - CAST(strftime('%s', t2.ts) as integer) AS interval
+    t2.ts AS prev_ts
   FROM logs AS t1, logs AS t2
  WHERE t1.device_id = t2.device_id
    AND t2.ts = (
@@ -105,18 +103,20 @@ dump('check with previous state', extract_state_change)
 # check if radical change
 sql = extract_state_change + """
    AND prev_state = state
-   AND (diff > 100 OR diff < -100)
+   AND t1.metrics - t2.metrics > 100
 """
 dump('check if radical change', sql)
 
 # select only state change
 sql = extract_state_change + """
-   AND t1.device_state <> t2.device_state
-"""
+   AND t1.device_state <> t2.device_state"""
 dump('select only state change', sql)
 
 
 # filter if there may be logging failure in long time
-dump('filter if there may be logging failure in long time', sql + "   AND interval < 60 * 60 * 24 * 3")
+sql = sql + """
+   AND CAST(strftime('%s', t1.ts) as INT) - CAST(strftime('%s', t2.ts) as INT) < 60 * 60 * 24 * 3
+"""
+dump('filter if there may be logging failure in long time', sql)
 
 con.close()
