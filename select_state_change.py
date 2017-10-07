@@ -46,12 +46,15 @@ con = sqlite3.connect(':memory:')
 con.execute(schema)
 
 # logging by each device
-for t in range(30):
+for t in range(20):
     i = random.randint(0, len(devices) - 1)
     devices[i].log(con)
 
 # check
-def dump(title, statement):
+import sys
+default_max_rows = int(sys.argv[1]) if len(sys.argv) > 2 else 6
+
+def dump(title, statement, max_rows=default_max_rows):
     print('### ' + title)
     print('```sql')
     print(statement)
@@ -59,6 +62,7 @@ def dump(title, statement):
     try:
         import pandas as pd
         pd.set_option('display.width', 150)
+        pd.set_option('display.max_rows', max_rows)
         result = pd.read_sql_query(statement, con)
     except ImportError:
         cursor = con.cursor()
@@ -92,7 +96,8 @@ SELECT
 """.strip()
 
 # check base data
-dump('check base data', 'SELECT * FROM logs')
+dump('check base data', 'SELECT * FROM logs', max_rows=6)
+dump('check base data (sorted)', 'SELECT * FROM logs ORDER BY device_id, ts', max_rows=100)
 
 # check with previous state
 dump('check with previous state', extract_state_change)
